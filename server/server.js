@@ -35,7 +35,7 @@ wss.on('connection', (ws) => {
                     ws.roomId = roomId;
                     ws.role = 'receiver';
                     console.log(`Receiver joined room ${roomId}`);
-                    
+
                     // If host already sent an offer, send it to the receiver
                     if (room.offer) {
                         ws.send(JSON.stringify({ type: 'offer', sdp: room.offer }));
@@ -81,6 +81,18 @@ wss.on('connection', (ws) => {
                 }
                 break;
 
+            case 'delete':
+                // Host manually deletes a room
+                if (rooms.has(roomId) && ws.role === 'host') {
+                    console.log(`Explicitly deleting room ${roomId}`);
+                    const room = rooms.get(roomId);
+                    if (room.receiver) {
+                        room.receiver.send(JSON.stringify({ type: 'room_deleted' }));
+                    }
+                    rooms.delete(roomId);
+                }
+                break;
+
             default:
                 console.warn(`Unknown message type: ${type}`);
         }
@@ -90,12 +102,10 @@ wss.on('connection', (ws) => {
         if (ws.roomId && rooms.has(ws.roomId)) {
             const room = rooms.get(ws.roomId);
             if (ws.role === 'host') {
-                console.log(`Host disconnected. Closing room ${ws.roomId}`);
-                // If host disconnects, notify receiver and delete room
-                if (room.receiver) {
-                    room.receiver.send(JSON.stringify({ type: 'host_disconnected' }));
-                }
-                rooms.delete(ws.roomId);
+                console.log(`Host disconnected from room ${ws.roomId}. Room remains active for rejoin.`);
+                room.host = null;
+                // We keep the room so the host can rejoin from the same ID. 
+                // In a real prod app, we'd add a timeout here to cleanup.
             } else if (ws.role === 'receiver') {
                 console.log(`Receiver disconnected from room ${ws.roomId}`);
                 room.receiver = null;
