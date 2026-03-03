@@ -1,0 +1,13 @@
+# Exclude Android project files as requested (pushing only signaling server)
+android/
+
+# Node.js
+server/node_modules/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
